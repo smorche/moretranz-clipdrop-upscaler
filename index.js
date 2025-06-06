@@ -1,53 +1,59 @@
 const express = require('express');
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
-const cors = require('cors');
-const fs = require('fs');
+require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 3000;
-
 const upload = multer({ dest: 'uploads/' });
-app.use(cors());
+
 app.use(express.static('public'));
 
-const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY || 'YOUR_API_KEY';
-
+// Upscaler Route
 app.post('/upscale', upload.single('image_file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
   try {
-    const formData = new FormData();
-    formData.append('image_file', fs.createReadStream(req.file.path));
-    formData.append('target_width', '2048');
-    formData.append('target_height', '2048');
+    const imagePath = req.file.path;
 
-    const response = await axios.post('https://clipdrop-api.co/image-upscaling/v1/upscale', formData, {
-      headers: {
-        ...formData.getHeaders(),
-        'x-api-key': CLIPDROP_API_KEY
-      },
-      responseType: 'stream'
-    });
+    const form = new FormData();
+    form.append('image_file', fs.createReadStream(imagePath));
 
-    res.setHeader('Content-Type', 'image/png');
-    response.data.pipe(res);
-  } catch (err) {
+    const response = await axios.post(
+      'https://clipdrop-api.co/super-resolution/v1',
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          'x-api-key': process.env.CLIPDROP_API_KEY,
+        },
+        responseType: 'arraybuffer' // Important: handle binary image
+      }
+    );
+
+    // Clean up local temp file
+    fs.unlinkSync(imagePath);
+
+    // Send upscaled image back to browser
+    res.set('Content-Type', 'image/png');
+    res.send(response.data);
+
+  } catch (error) {
+    // Error logging
+    console.error('Upscale failed:', error.message);
+
     if (error.response) {
-  console.error('ClipDrop API Error:', error.response.status, error.response.statusText);
-  console.error('Details:', error.response.data);
-} else if (error.request) {
-  console.error('No response received:', error.request);
-} else {
-  console.error('Error setting up request:', error.message);
-}
-    res.status(500).json({ error: 'Upscaling failed' });
-  } finally {
-    fs.unlink(req.file.path, () => {});
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+    } else if (error.request) {
+      console.error('No response received:', error.request);
+    } else {
+      console.error('Request setup error:', error.message);
+    }
+
+    res.status(500).json({ error: 'Upscaling failed. Please try again.' });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`MoreTranz Upscaler running on port ${PORT}`));
