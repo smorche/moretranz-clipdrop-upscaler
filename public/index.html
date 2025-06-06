@@ -11,11 +11,14 @@
       text-align: center;
       padding: 40px 20px;
     }
+
     h1 {
       color: #00b4ff;
       margin-bottom: 10px;
     }
-    #drop-zone {
+
+    .drop-zone {
+      position: relative;
       border: 2px dashed #444;
       border-radius: 12px;
       padding: 50px 20px;
@@ -25,17 +28,34 @@
       max-width: 600px;
       margin: 20px auto;
     }
-    #drop-zone:hover {
+
+    .drop-zone:hover {
       border-color: #00b4ff;
     }
-    #drop-zone input {
-      display: none;
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      top: 0;
+      left: 0;
     }
+
+    .drop-zone-text {
+      font-size: 1rem;
+      color: #aaa;
+      pointer-events: none;
+    }
+
     .icon {
-      font-size: 3rem;
-      margin-bottom: 10px;
+      font-size: 2.5rem;
+      margin-bottom: 8px;
       color: #888;
+      pointer-events: none;
     }
+
     button {
       margin-top: 20px;
       padding: 10px 30px;
@@ -46,9 +66,11 @@
       border-radius: 8px;
       cursor: pointer;
     }
+
     button:hover {
       background-color: #00a4e0;
     }
+
     img {
       max-width: 90%;
       margin-top: 30px;
@@ -62,11 +84,11 @@
   <p>Drop or select your image below. We’ll enhance it instantly for perfect DTF prints.</p>
 
   <form id="upload-form" enctype="multipart/form-data">
-    <label id="drop-zone">
-      <div class="icon">📤</div>
-      <div><strong>Click to upload</strong> or drag your image here</div>
+    <div class="drop-zone" id="drop-zone">
       <input type="file" name="image_file" accept="image/*" required>
-    </label>
+      <div class="icon">📤</div>
+      <div class="drop-zone-text"><strong>Click or drag an image here to upscale</strong></div>
+    </div>
     <button type="submit">Upscale Image</button>
   </form>
 
@@ -76,14 +98,15 @@
     const dropZone = document.getElementById('drop-zone');
     const fileInput = dropZone.querySelector('input');
 
-    dropZone.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('dragover', e => {
       e.preventDefault();
       dropZone.style.borderColor = '#00b4ff';
     });
+
     dropZone.addEventListener('dragleave', () => {
       dropZone.style.borderColor = '#444';
     });
+
     dropZone.addEventListener('drop', e => {
       e.preventDefault();
       fileInput.files = e.dataTransfer.files;
@@ -100,13 +123,14 @@
         body: formData
       });
 
+      const result = document.getElementById('result');
+      result.innerHTML = '';
+
       if (response.ok) {
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const img = document.createElement('img');
         img.src = url;
-        const result = document.getElementById('result');
-        result.innerHTML = '';
         result.appendChild(img);
       } else {
         const error = await response.json();
