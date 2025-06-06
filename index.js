@@ -10,7 +10,7 @@ const upload = multer({ dest: 'uploads/' });
 
 app.use(express.static('public'));
 
-// Upscale image route
+// POST route for image upscaling
 app.post('/upscale', upload.single('image_file'), async (req, res) => {
   const imagePath = req.file?.path;
 
@@ -21,31 +21,32 @@ app.post('/upscale', upload.single('image_file'), async (req, res) => {
   try {
     const form = new FormData();
     form.append('image_file', fs.createReadStream(imagePath));
+    form.append('target_width', '2048');  // Adjust as needed
+    form.append('target_height', '2048'); // Adjust as needed
 
-    const clipdropRes = await axios.post(
-      'https://clipdrop-api.co/super-resolution/v1',
+    const response = await axios.post(
+      'https://clipdrop-api.co/image-upscaling/v1/upscale',
       form,
       {
         headers: {
           ...form.getHeaders(),
-          'x-api-key': process.env.CLIPDROP_API_KEY
+          'x-api-key': process.env.CLIPDROP_API_KEY,
         },
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
       }
     );
 
-    fs.unlinkSync(imagePath); // cleanup temp file
+    fs.unlinkSync(imagePath); // Delete temp file
 
-    res.set('Content-Type', 'image/png');
-    res.send(clipdropRes.data);
-
+    res.set('Content-Type', response.headers['content-type']);
+    res.send(response.data);
   } catch (error) {
     console.error('Upscaling failed:', error.message);
     if (error.response) {
       console.error('Status:', error.response.status);
       console.error('Data:', error.response.data);
     }
-    res.status(500).json({ error: 'Upscaling failed. Please try a different image.' });
+    res.status(500).json({ error: 'Upscaling failed. Please try again.' });
   }
 });
 
