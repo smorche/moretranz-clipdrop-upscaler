@@ -8,10 +8,15 @@ require('dotenv').config();
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 
-// Serve static files (index.html, CSS, JS) from 'public' folder
+// Serve static files from 'public' folder (for index.html, etc.)
 app.use(express.static('public'));
 
-// POST /upscale route
+// Explicit fallback route for Render to serve homepage
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/public/index.html');
+});
+
+// POST route to upscale image using Claid (Let's Enhance) API
 app.post('/upscale', upload.single('image_file'), async (req, res) => {
   const imagePath = req.file?.path;
 
@@ -20,7 +25,6 @@ app.post('/upscale', upload.single('image_file'), async (req, res) => {
   }
 
   try {
-    // Prepare image + operations payload for Claid.ai
     const form = new FormData();
     form.append('image', fs.createReadStream(imagePath));
     form.append(
@@ -28,12 +32,11 @@ app.post('/upscale', upload.single('image_file'), async (req, res) => {
       JSON.stringify([
         {
           type: 'upscale',
-          scale: 2 // upscale by 2x, maintains aspect ratio
+          scale: 2 // scale factor: 2x
         }
       ])
     );
 
-    // Send request to Claid API
     const response = await axios.post(
       'https://api.claid.ai/v1/process',
       form,
@@ -46,10 +49,7 @@ app.post('/upscale', upload.single('image_file'), async (req, res) => {
       }
     );
 
-    // Delete temp image
-    fs.unlinkSync(imagePath);
-
-    // Return upscaled image
+    fs.unlinkSync(imagePath); // clean up temp file
     res.set('Content-Type', 'image/png');
     res.send(response.data);
 
