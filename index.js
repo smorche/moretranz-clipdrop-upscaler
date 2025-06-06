@@ -34,7 +34,14 @@ app.post('/upscale', upload.single('image_file'), async (req, res) => {
     res.setHeader('Content-Type', 'image/png');
     response.data.pipe(res);
   } catch (err) {
-    console.error(err.response?.data || err.message);
+    if (error.response) {
+  console.error('ClipDrop API Error:', error.response.status, error.response.statusText);
+  console.error('Details:', error.response.data);
+} else if (error.request) {
+  console.error('No response received:', error.request);
+} else {
+  console.error('Error setting up request:', error.message);
+}
     res.status(500).json({ error: 'Upscaling failed' });
   } finally {
     fs.unlink(req.file.path, () => {});
