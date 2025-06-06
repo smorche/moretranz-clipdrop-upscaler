@@ -10,7 +10,6 @@ const upload = multer({ dest: 'uploads/' });
 
 app.use(express.static('public'));
 
-// POST route for image upscaling
 app.post('/upscale', upload.single('image_file'), async (req, res) => {
   const imagePath = req.file?.path;
 
@@ -20,25 +19,29 @@ app.post('/upscale', upload.single('image_file'), async (req, res) => {
 
   try {
     const form = new FormData();
-    form.append('image_file', fs.createReadStream(imagePath));
-    form.append('target_width', '2048');  // Adjust as needed
-    form.append('target_height', '2048'); // Adjust as needed
+    form.append('image', fs.createReadStream(imagePath));
+    form.append('operations', JSON.stringify([
+      {
+        type: 'upscale',
+        scale: 2 // Adjust the scale as needed (e.g., 2 for 2x upscaling)
+      }
+    ]));
 
     const response = await axios.post(
-      'https://clipdrop-api.co/image-upscaling/v1/upscale',
+      'https://api.claid.ai/v1/process',
       form,
       {
         headers: {
           ...form.getHeaders(),
-          'x-api-key': process.env.CLIPDROP_API_KEY,
+          'x-api-key': process.env.CLAID_API_KEY,
         },
         responseType: 'arraybuffer',
       }
     );
 
-    fs.unlinkSync(imagePath); // Delete temp file
+    fs.unlinkSync(imagePath); // Delete the temporary file
 
-    res.set('Content-Type', response.headers['content-type']);
+    res.set('Content-Type', 'image/png');
     res.send(response.data);
   } catch (error) {
     console.error('Upscaling failed:', error.message);
@@ -52,5 +55,5 @@ app.post('/upscale', upload.single('image_file'), async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ MoreTranz Upscaler running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
